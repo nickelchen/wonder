@@ -1,0 +1,8 @@
+*.swp
+
+bin/
+pkg/
+
+vendor/*/
+
+logs/
