@@ -6,8 +6,8 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"nickelchen/wonder/cmd/wonder/command"
-	"nickelchen/wonder/cmd/wonder/command/alice"
+	"github.com/nickelchen/wonder/cmd/wonder/command"
+	"github.com/nickelchen/wonder/cmd/wonder/command/alice"
 )
 
 var Commands map[string]cli.CommandFactory

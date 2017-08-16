@@ -5,7 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"nickelchen/wonder/share"
+	"github.com/nickelchen/wonder/share"
 )
 
 type seqHandler interface {

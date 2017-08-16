@@ -2,7 +2,7 @@ package alice
 
 import (
 	"fmt"
-	"nickelchen/wonder/land"
+	"github.com/nickelchen/wonder/land"
 	"time"
 
 	log "github.com/sirupsen/logrus"

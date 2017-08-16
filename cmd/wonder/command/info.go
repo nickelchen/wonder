@@ -12,9 +12,9 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/mitchellh/cli"
 
-	"nickelchen/wonder/client"
-	"nickelchen/wonder/cmd/wonder/command/render"
-	"nickelchen/wonder/share"
+	"github.com/nickelchen/wonder/client"
+	"github.com/nickelchen/wonder/cmd/wonder/command/render"
+	"github.com/nickelchen/wonder/share"
 )
 
 var gRow int

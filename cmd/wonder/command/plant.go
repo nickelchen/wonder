@@ -3,7 +3,7 @@ package command
 import (
 	"flag"
 	"fmt"
-	"nickelchen/wonder/client"
+	"github.com/nickelchen/wonder/client"
 	"strings"
 	"time"
 

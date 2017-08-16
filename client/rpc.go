@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"nickelchen/wonder/share"
+	"github.com/nickelchen/wonder/share"
 
 	log "github.com/sirupsen/logrus"
 

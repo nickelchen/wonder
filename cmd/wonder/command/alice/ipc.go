@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"nickelchen/wonder/land"
-	"nickelchen/wonder/share"
+	"github.com/nickelchen/wonder/land"
+	"github.com/nickelchen/wonder/share"
 	"strings"
 
 	log "github.com/sirupsen/logrus"

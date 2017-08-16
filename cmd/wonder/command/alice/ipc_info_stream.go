@@ -3,8 +3,8 @@ package alice
 import (
 	"encoding/json"
 	"fmt"
-	"nickelchen/wonder/land"
-	"nickelchen/wonder/share"
+	"github.com/nickelchen/wonder/land"
+	"github.com/nickelchen/wonder/share"
 
 	log "github.com/sirupsen/logrus"
 )
