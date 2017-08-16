@@ -93,14 +93,22 @@
 			"revisionTime": "2017-06-20T10:48:52Z"
 		},
 		{
+			"checksumSHA1": "8wbHSD24FGJUJDS1F6wbtEt8z+w=",
 			"path": "golang.org/x/crypto/ssh/terminal",
-			"revision": ""
+			"revision": "b176d7def5d71bdd214203491f89843ed217f420",
+			"revisionTime": "2017-07-23T04:49:35Z"
 		},
 		{
-			"checksumSHA1": "AIIn8HsmPeOuNDpemoEWwlt/w5c=",
+			"checksumSHA1": "fDv4eIQwZuKatRI+hU7ILAJSl5c=",
 			"path": "golang.org/x/sys/unix",
-			"revision": "47bdb838cce8879fca08207206a5dfde2f2538bc",
-			"revisionTime": "2017-08-08T10:31:41Z"
+			"revision": "e42485b6e20ae7d2304ec72e535b103ed350cc02",
+			"revisionTime": "2017-08-09T17:40:02Z"
+		},
+		{
+			"checksumSHA1": "LkAsnLUlAZSg3lRYk7BEyNfog3A=",
+			"path": "golang.org/x/sys/windows",
+			"revision": "e42485b6e20ae7d2304ec72e535b103ed350cc02",
+			"revisionTime": "2017-08-09T17:40:02Z"
 		}
 	],
 	"rootPath": "nickelchen/wonder"
