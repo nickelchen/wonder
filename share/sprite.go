@@ -74,3 +74,14 @@ type Flower struct {
 	SpriteBase
 	color string
 }
+
+type GameBoard struct {
+	Tiles   [][]Tile
+	Trees   []Tree
+	Flowers []Flower
+	Grasses []Grass
+
+	MoveEvents   []SpriteMove
+	AddEvents    []SpriteAdd
+	DeleteEvents []SpriteDelete
+}

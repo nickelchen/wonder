@@ -1,13 +1,13 @@
 package render
 
-type InfoRender interface {
-	Reset(int, int)
-	RenderRow(int, string)
-	RenderChar(int, int, string, int)
+import (
+	"io"
 
-	RenderFlower(int, int)
-	RenderTree(int, int)
-	RenderGrass(int, int)
-	RenderGround(int, int)
-	RenderMud(int, int)
+	"github.com/nickelchen/wonder/share"
+)
+
+type InfoRender interface {
+	Stage(*share.GameBoard, int, int, io.Writer)
+	Render()
+	Loop()
 }

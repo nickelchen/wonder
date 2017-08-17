@@ -109,7 +109,7 @@ func randSprites() []share.Sprite {
 }
 
 func (l *Land) findEmptyPoint() share.Point {
-	return share.Point{X: rand.Int() % gRow, Y: rand.Int() % gCol}
+	return share.Point{X: rand.Int() % gCol, Y: rand.Int() % gRow}
 }
 
 func (l *Land) Shrink() {
