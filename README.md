@@ -1,6 +1,7 @@
 Alice wonder land. It's an attemp to build a wonder land where Alice can happily playing in.
 
 
+
 ### Install
 
 ```
@@ -30,7 +31,9 @@ Let's see what the wonder land is looking now.
 $ wonder info
 ```
 
-Emm... Ugly ui, I had to admit.
+![demo.jpg](./demo.jpg "Wonder info")
+
+Emm... Ugly ui, I had to admit. `GG` is grass, `TT` is tree, `FF` is flower, flowers are red!
 
 Show me the version
 
