@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/joho/godotenv/autoload"
@@ -62,6 +63,10 @@ func (c *InfoCommand) Run(args []string) int {
 		return 1
 	}
 
+	rend := render.TermRender{Ui: c.Ui}
+	// wait group for render to complete
+	var rendWg sync.WaitGroup
+
 	respCh1 := make(chan share.InfoResponseObj, 128)
 	if err := cl.Info(respCh1); err != nil {
 		c.Ui.Output(fmt.Sprintf("can not get info: %s\n", err))
@@ -73,13 +78,42 @@ func (c *InfoCommand) Run(args []string) int {
 	flowerCh := make(chan share.Flower, 128)
 	grassCh := make(chan share.Grass, 128)
 
-	ren := render.TermRender{Ui: c.Ui}
-	go c.render(&ren, tilesCh, treeCh, flowerCh, grassCh)
+	go c.receiveInfoItems(respCh1, tilesCh, treeCh, flowerCh, grassCh)
+	go c.renderInfoItems(&rendWg, &rend, tilesCh, treeCh, flowerCh, grassCh)
+	// we need wait for info item process to complete
+	rendWg.Add(1)
+
+	respCh2 := make(chan share.EventResponseObj, 128)
+	if err := cl.Subscribe(respCh2); err != nil {
+		c.Ui.Output(fmt.Sprintf("can not get info: %s\n", err))
+		return 1
+	}
+
+	moveCh := make(chan share.SpriteMove, 128)
+	addCh := make(chan share.SpriteAdd, 128)
+	deleteCh := make(chan share.SpriteDelete, 128)
+
+	go c.receiveEventItems(respCh2, moveCh, addCh, deleteCh)
+	// we need wait for event item process to complete
+	go c.renderEventItems(&rendWg, &rend, moveCh, addCh, deleteCh)
+	rendWg.Add(1)
+
+	rendWg.Wait()
+
+	return 0
+}
+
+func (c *InfoCommand) receiveInfoItems(
+	respCh chan share.InfoResponseObj,
+	tilesCh chan [][]share.Tile,
+	treeCh chan share.Tree,
+	flowerCh chan share.Flower,
+	grassCh chan share.Grass) {
 
 	for {
 		select {
 		// receive from info response
-		case r := <-respCh1:
+		case r := <-respCh:
 			t := r.Type
 			p := r.Payload
 
@@ -117,27 +151,21 @@ func (c *InfoCommand) Run(args []string) int {
 			case share.InfoItemTypeDone:
 				c.Ui.Output("received all repsonse. finish")
 
-				goto STREAM_EVENT
-
+				return
 			}
 		}
 	}
+}
 
-STREAM_EVENT:
-
-	respCh2 := make(chan share.EventResponseObj, 128)
-	if err := cl.Subscribe(respCh2); err != nil {
-		c.Ui.Output(fmt.Sprintf("can not get info: %s\n", err))
-		return 1
-	}
-	moveCh := make(chan share.SpriteMove, 128)
-	addCh := make(chan share.SpriteAdd, 128)
-	deleteCh := make(chan share.SpriteDelete, 128)
-
+func (c *InfoCommand) receiveEventItems(
+	respCh chan share.EventResponseObj,
+	moveCh chan share.SpriteMove,
+	addCh chan share.SpriteAdd,
+	deleteCh chan share.SpriteDelete) {
 	for {
 		select {
 		// receive from subscribe response
-		case r := <-respCh2:
+		case r := <-respCh:
 			t := r.Type
 			p := r.Payload
 
@@ -166,24 +194,20 @@ STREAM_EVENT:
 				deleteCh <- event
 			}
 
-		// 10 seconds without event received.
-		case <-time.After(10 * time.Second):
-			c.Ui.Output("no more events in 10 seconds, quit.~ ~ ~")
-			goto RETURN
 		}
 	}
-
-RETURN:
-	return 0
 }
 
-func (c *InfoCommand) render(ren render.InfoRender,
+func (c *InfoCommand) renderInfoItems(wg *sync.WaitGroup,
+	rend render.InfoRender,
 	tilesCh chan [][]share.Tile,
 	treeCh chan share.Tree,
 	flowerCh chan share.Flower,
 	grassCh chan share.Grass) {
 
-	ren.Reset(gRow, gCol)
+	defer wg.Done()
+
+	rend.Reset(gRow, gCol)
 
 	// 1. wait for tiles to render first
 	select {
@@ -193,9 +217,9 @@ func (c *InfoCommand) render(ren render.InfoRender,
 			for j := 1; j <= len(tilesRow); j++ {
 				t := tilesRow[j-1]
 				if t.Gradient > 0 {
-					ren.RenderMud(i, j)
+					rend.RenderMud(i, j)
 				} else {
-					ren.RenderGround(i, j)
+					rend.RenderGround(i, j)
 				}
 			}
 		}
@@ -207,16 +231,46 @@ func (c *InfoCommand) render(ren render.InfoRender,
 		case tree := <-treeCh:
 			p := tree.GetPoint()
 			// point.X and Y is based on 0. but stage is based on 1.
-			ren.RenderTree(p.X+1, p.Y+1)
+			rend.RenderTree(p.X+1, p.Y+1)
 		case flower := <-flowerCh:
 			p := flower.GetPoint()
-			ren.RenderFlower(p.X+1, p.Y+1)
+			rend.RenderFlower(p.X+1, p.Y+1)
 		case grass := <-grassCh:
 			p := grass.GetPoint()
-			ren.RenderGrass(p.X+1, p.Y+1)
+			rend.RenderGrass(p.X+1, p.Y+1)
 
+		// 10 seconds without info received.
+		case <-time.After(3 * time.Second):
+			c.Ui.Output("no more sprites in 3 seconds, quit rendering info items")
+			return
 		}
 	}
+}
+
+func (c *InfoCommand) renderEventItems(wg *sync.WaitGroup,
+	rend render.InfoRender,
+	moveCh chan share.SpriteMove,
+	addCh chan share.SpriteAdd,
+	deleteCh chan share.SpriteDelete) {
+
+	defer wg.Done()
+
+	for {
+		select {
+		case event := <-moveCh:
+			c.Ui.Output(fmt.Sprintf("receive sprite move struct is: %v\n", event))
+		case event := <-addCh:
+			c.Ui.Output(fmt.Sprintf("receive sprite add struct is: %v\n", event))
+		case event := <-deleteCh:
+			c.Ui.Output(fmt.Sprintf("receive sprite delete struct is: %v\n", event))
+
+		// 10 seconds without event received.
+		case <-time.After(10 * time.Second):
+			c.Ui.Output("no more events in 10 seconds, quit rendering event items")
+			return
+		}
+	}
+
 }
 
 func (c *InfoCommand) Synopsis() string {
