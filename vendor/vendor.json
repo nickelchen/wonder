@@ -15,12 +15,6 @@
 			"revisionTime": "2017-04-17T20:07:03Z"
 		},
 		{
-			"checksumSHA1": "6G09sYG6l08dtuCtY5m0k+gSXe4=",
-			"path": "github.com/buger/goterm",
-			"revision": "2f8dfbc7dbbff5dd1d391ed91482c24df243b2d3",
-			"revisionTime": "2017-08-07T14:32:30Z"
-		},
-		{
 			"checksumSHA1": "cdOCt0Yb+hdErz8NAQqayxPmRsY=",
 			"path": "github.com/hashicorp/errwrap",
 			"revision": "7554cd9344cec97297fa6649b055a8c98c2a1e55",
@@ -111,5 +105,5 @@
 			"revisionTime": "2017-08-09T17:40:02Z"
 		}
 	],
-	"rootPath": "nickelchen/wonder"
+	"rootPath": "github.com/nickelchen/wonder"
 }
