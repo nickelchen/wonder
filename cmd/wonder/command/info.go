@@ -59,11 +59,11 @@ func (c *InfoCommand) Run(args []string) int {
 		return 1
 	}
 
-	board := &share.GameBoard{}
+	board := share.NewGameBoard()
 	c.board = board
 
 	rend := render.TermRender{}
-	rend.Stage(board, 80, 24, c.Ui.(*cli.BasicUi).Writer)
+	rend.Stage(board, 2*gCol, gRow, c.Ui.(*cli.BasicUi).Writer)
 
 	respCh1 := make(chan share.InfoResponseObj, 512)
 	if err := cl.Info(respCh1); err != nil {
@@ -127,6 +127,13 @@ func (c *InfoCommand) receiveInfoItems(respCh chan share.InfoResponseObj, rend r
 
 				c.board.Grasses = append(c.board.Grasses, spr)
 
+			case share.InfoItemTypeHuman:
+				spr := share.Human{}
+				json.Unmarshal(p, &spr)
+				c.Ui.Output(fmt.Sprintf("receive human struct is: %v\n", spr))
+
+				c.board.Humans = append(c.board.Humans, spr)
+
 			case share.InfoItemTypeDone:
 				c.Ui.Output("received all repsonse. finish")
 
@@ -155,21 +162,36 @@ func (c *InfoCommand) receiveEventItems(respCh chan share.EventResponseObj, rend
 				json.Unmarshal(p, &event)
 				c.Ui.Output(fmt.Sprintf("receive sprite move struct is: %v\n", event))
 
-				c.board.MoveEvents = append(c.board.MoveEvents, event)
+				c.board.MoveEventsCh() <- event
+
+				// c.board.MoveEvents = append(c.board.MoveEvents, event)
+
+			case share.EventTypeJump:
+				event := share.SpriteJump{}
+				json.Unmarshal(p, &event)
+				c.Ui.Output(fmt.Sprintf("receive sprite jump struct is: %v\n", event))
+
+				c.board.JumpEventsCh() <- event
+
+				// c.board.MoveEvents = append(c.board.MoveEvents, event)
 
 			case share.EventTypeAdd:
 				event := share.SpriteAdd{}
 				json.Unmarshal(p, &event)
 				c.Ui.Output(fmt.Sprintf("receive sprite add struct is: %v\n", event))
 
-				c.board.AddEvents = append(c.board.AddEvents, event)
+				c.board.AddEventsCh() <- event
+
+				// c.board.AddEvents = append(c.board.AddEvents, event)
 
 			case share.EventTypeDelete:
 				event := share.SpriteDelete{}
 				json.Unmarshal(p, &event)
 				c.Ui.Output(fmt.Sprintf("receive sprite delete struct is: %v\n", event))
 
-				c.board.DeleteEvents = append(c.board.DeleteEvents, event)
+				c.board.DeleteEventsCh() <- event
+
+				// c.board.DeleteEvents = append(c.board.DeleteEvents, event)
 			}
 
 		}

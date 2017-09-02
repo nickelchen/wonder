@@ -46,6 +46,7 @@ const (
 	InfoItemTypeTree   = "trees"
 	InfoItemTypeFlower = "flowers"
 	InfoItemTypeGrass  = "grass"
+	InfoItemTypeHuman  = "human"
 	InfoItemTypeDone   = "done"
 )
 
@@ -64,6 +65,7 @@ type SubscribeResponse struct {
 
 const (
 	EventTypeMove   = "move"
+	EventTypeJump   = "jump"
 	EventTypeAdd    = "add"
 	EventTypeDelete = "delete"
 )

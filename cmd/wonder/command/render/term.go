@@ -1,7 +1,6 @@
 package render
 
 import (
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -27,18 +26,6 @@ var elemColor map[string]termbox.Attribute
 
 const blockSize = 2
 
-var (
-	CodePointSpace  string
-	CodePointTree   string
-	CodePointFlower string
-	CodePointGrass  string
-	CodePointHuman  string
-)
-
-func readHexCodePoint(key string) string {
-	valueBytes, _ := hex.DecodeString(os.Getenv(key))
-	return fmt.Sprintf("%s ", valueBytes)
-}
 func readColorCode(key string) termbox.Attribute {
 	value, _ := strconv.Atoi(os.Getenv(key))
 	fmt.Printf("key : %s value : %d\n", key, value)
@@ -51,16 +38,11 @@ func readDebug() bool {
 }
 
 func init() {
-	CodePointSpace = readHexCodePoint("CodePointSpace")
-	CodePointTree = readHexCodePoint("CodePointTree")
-	CodePointFlower = readHexCodePoint("CodePointFlower")
-	CodePointGrass = readHexCodePoint("CodePointGrass")
-	CodePointHuman = readHexCodePoint("CodePointHuman")
 
 	elemColor = map[string]termbox.Attribute{
 		"ground": readColorCode("COLOR_GROUND"),
 		"mud":    readColorCode("COLOR_MUD"),
-		"alice":  readColorCode("COLOR_ALICE"),
+		"human":  readColorCode("COLOR_HUMAN"),
 		"tree":   readColorCode("COLOR_TREE"),
 		"grass":  readColorCode("COLOR_GRASS"),
 		"flower": readColorCode("COLOR_FLOWER"),
@@ -163,6 +145,11 @@ func (u *TermRender) Render() {
 		u.RenderGrass(p.X+1, p.Y+1)
 	}
 
+	for _, s := range u.board.Humans {
+		p := s.GetPoint()
+		u.RenderHuman(p.X+1, p.Y+1, s.Name)
+	}
+
 	if debug {
 		for i := 1; i < 256; i++ {
 			z := i / 100
@@ -225,10 +212,16 @@ func (u *TermRender) RenderMud(x, y int) {
 		termbox.SetCell(u.offsetX+x*blockSize+k, u.offsetY+y, ' ', textColor, color)
 	}
 }
-func (u *TermRender) RenderAlice(x, y int) {
-	color := elemColor["alice"]
+func (u *TermRender) RenderHuman(x, y int, name string) {
+	var color termbox.Attribute
+
+	if name == "Alice" {
+		color = elemColor["human"]
+	} else {
+		color = termbox.ColorBlack
+	}
 
 	for k := 0; k < blockSize; k++ {
-		termbox.SetCell(u.offsetX+x*blockSize+k, u.offsetY+y, 'A', textColor, color)
+		termbox.SetCell(u.offsetX+x*blockSize+k, u.offsetY+y, []rune(name)[0], textColor, color)
 	}
 }
