@@ -33,7 +33,7 @@ func (s SpriteBase) ToggleVisible() {
 	s.Visible = !s.Visible
 }
 
-func (s *SpriteBase) PutToPoint(p Point) {
+func (s *SpriteBase) PutPoint(p Point) {
 	s.P = p
 }
 
@@ -68,6 +68,11 @@ type Human struct {
 	Name string
 }
 
+type Animal struct {
+	SpriteBase
+	Name string
+}
+
 type Tree struct {
 	SpriteBase
 }
@@ -87,6 +92,7 @@ type GameBoard struct {
 	Flowers []Flower
 	Grasses []Grass
 	Humans  []Human
+	Animals []Animal
 
 	moveEventsCh   chan SpriteMove
 	jumpEventsCh   chan SpriteJump
@@ -95,38 +101,38 @@ type GameBoard struct {
 }
 
 func NewGameBoard() *GameBoard {
-	gb := GameBoard{
+	board := GameBoard{
 		moveEventsCh:   make(chan SpriteMove, 255),
 		jumpEventsCh:   make(chan SpriteJump, 255),
 		addEventsCh:    make(chan SpriteAdd, 255),
 		deleteEventsCh: make(chan SpriteDelete, 255),
 	}
 
-	go gb.pollingEvents()
+	go board.pollingEvents()
 
-	return &gb
-}
-
-func (gb GameBoard) MoveEventsCh() chan SpriteMove {
-	return gb.moveEventsCh
-}
-func (gb GameBoard) JumpEventsCh() chan SpriteJump {
-	return gb.jumpEventsCh
-}
-func (gb GameBoard) AddEventsCh() chan SpriteAdd {
-	return gb.addEventsCh
-}
-func (gb GameBoard) DeleteEventsCh() chan SpriteDelete {
-	return gb.deleteEventsCh
+	return &board
 }
 
-func (gb *GameBoard) pollingEvents() {
+func (board GameBoard) MoveEventsCh() chan SpriteMove {
+	return board.moveEventsCh
+}
+func (board GameBoard) JumpEventsCh() chan SpriteJump {
+	return board.jumpEventsCh
+}
+func (board GameBoard) AddEventsCh() chan SpriteAdd {
+	return board.addEventsCh
+}
+func (board GameBoard) DeleteEventsCh() chan SpriteDelete {
+	return board.deleteEventsCh
+}
+
+func (board *GameBoard) pollingEvents() {
 	for {
 		select {
-		case event := <-gb.moveEventsCh:
+		case event := <-board.moveEventsCh:
 			// for now, only human can move.
 			var humans []Human
-			for _, h := range gb.Humans {
+			for _, h := range board.Humans {
 				if h.Name == event.Name {
 					p := h.P
 					switch event.Direction {
@@ -139,31 +145,38 @@ func (gb *GameBoard) pollingEvents() {
 					case MoveLeft:
 						p.X -= 1
 					}
-					h.PutToPoint(p)
+					h.PutPoint(p)
 				}
 				humans = append(humans, h)
 			}
 
-			gb.Humans = humans
-		case event := <-gb.jumpEventsCh:
-			// for now human can jump
-			var humans []Human
-			for _, h := range gb.Humans {
-				if h.Name == event.Name {
-					p := h.P
-					p.X = event.X
-					p.Y = event.Y
+			board.Humans = humans
 
-					h.PutToPoint(p)
+		case event := <-board.jumpEventsCh:
+			// for now only animal can jump
+			var animals []Animal
+			var this Animal
+			for _, a := range board.Animals {
+				if a.Name == event.Name {
+					this = a
+					continue
 				}
-				humans = append(humans, h)
+				animals = append(animals, a)
 			}
 
-			gb.Humans = humans
+			this.Name = event.Name
+			p := this.P
+			p.X = event.X
+			p.Y = event.Y
 
-		case <-gb.addEventsCh:
+			this.PutPoint(p)
+
+			animals = append(animals, this)
+			board.Animals = animals
+
+		case <-board.addEventsCh:
 			//
-		case <-gb.deleteEventsCh:
+		case <-board.deleteEventsCh:
 			//
 		}
 	}

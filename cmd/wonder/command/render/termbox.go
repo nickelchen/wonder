@@ -28,8 +28,6 @@ const blockSize = 2
 
 func readColorCode(key string) termbox.Attribute {
 	value, _ := strconv.Atoi(os.Getenv(key))
-	fmt.Printf("key : %s value : %d\n", key, value)
-
 	return termbox.Attribute(value)
 }
 
@@ -43,6 +41,7 @@ func init() {
 		"ground": readColorCode("COLOR_GROUND"),
 		"mud":    readColorCode("COLOR_MUD"),
 		"human":  readColorCode("COLOR_HUMAN"),
+		"animal": readColorCode("COLOR_ANIMAL"),
 		"tree":   readColorCode("COLOR_TREE"),
 		"grass":  readColorCode("COLOR_GRASS"),
 		"flower": readColorCode("COLOR_FLOWER"),
@@ -145,9 +144,14 @@ func (u *TermRender) Render() {
 		u.RenderGrass(p.X+1, p.Y+1)
 	}
 
-	for _, s := range u.board.Humans {
-		p := s.GetPoint()
-		u.RenderHuman(p.X+1, p.Y+1, s.Name)
+	for _, h := range u.board.Humans {
+		p := h.GetPoint()
+		u.RenderHuman(p.X+1, p.Y+1, h.Name)
+	}
+
+	for _, a := range u.board.Animals {
+		p := a.GetPoint()
+		u.RenderAnimal(p.X+1, p.Y+1, a.Name)
 	}
 
 	if debug {
@@ -213,13 +217,15 @@ func (u *TermRender) RenderMud(x, y int) {
 	}
 }
 func (u *TermRender) RenderHuman(x, y int, name string) {
-	var color termbox.Attribute
+	color := elemColor["human"]
 
-	if name == "Alice" {
-		color = elemColor["human"]
-	} else {
-		color = termbox.ColorBlack
+	for k := 0; k < blockSize; k++ {
+		termbox.SetCell(u.offsetX+x*blockSize+k, u.offsetY+y, []rune(name)[0], textColor, color)
 	}
+}
+
+func (u *TermRender) RenderAnimal(x, y int, name string) {
+	color := elemColor["animal"]
 
 	for k := 0; k < blockSize; k++ {
 		termbox.SetCell(u.offsetX+x*blockSize+k, u.offsetY+y, []rune(name)[0], textColor, color)

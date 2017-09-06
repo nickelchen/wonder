@@ -47,6 +47,7 @@ const (
 	InfoItemTypeFlower = "flowers"
 	InfoItemTypeGrass  = "grass"
 	InfoItemTypeHuman  = "human"
+	InfoItemTypeAnimal = "animal"
 	InfoItemTypeDone   = "done"
 )
 

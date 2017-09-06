@@ -35,9 +35,9 @@ $ wonder info
 
 Emm... Ugly ui, I had to admit. `GG` is grass, `TT` is tree, `FF` is flower
 
-Red block is Alice, Black block is ghost. you can see alice is chasing the ghost.
+Red block is Alice, Black block is rabbit. you can see alice is chasing the rabbit.
 
-The server side streams moving events(for alice), and jumping events(for ghost)
+The server side streams moving events(for alice), and jumping events(for rabbit)
 to client, client then render them in screen. using `termbox-go`
 
 Show me the version

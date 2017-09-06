@@ -1,7 +1,6 @@
 package land
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -83,117 +82,15 @@ func Create(config *Config) *Land {
 }
 
 func (l *Land) Spread() int {
-	l.tiles = randTiles()
-	l.sprites = randSprites()
+	l.tiles = initTiles()
+	l.sprites = initSprites()
 
-	l.putAlice()
+	l.aliceEnter()
 
-	go l.spawnEvents()
+	go l.spawnFakeEvents()
 
 	log.Info("land/land.go Spread()")
 	return 0
-}
-
-func randTiles() [][]share.Tile {
-	var tiles [][]share.Tile
-
-	for i := 0; i < gRow; i++ {
-		var row []share.Tile
-		for j := 0; j < gCol; j++ {
-			row = append(row, share.Tile{Gradient: rand.Int() % 2})
-		}
-		tiles = append(tiles, row)
-	}
-
-	return tiles
-}
-
-func randSprites() []share.Sprite {
-	var sprites []share.Sprite
-
-	return sprites
-}
-
-func (l *Land) putAlice() {
-	// put alice.
-	point := l.findEmptyPoint()
-	alice := share.Human{Name: "Alice"}
-	alice.PutToPoint(point)
-	l.sprites = append(l.sprites, alice)
-}
-
-func (l *Land) moveAlice(dir share.MoveDirection) {
-	var sprites []share.Sprite
-
-	l.spritesLock.Lock()
-	defer l.spritesLock.Unlock()
-
-	for _, s := range l.sprites {
-		if isAlice(s) {
-			a, _ := s.(share.Human)
-			// found alice. move its place
-			p := a.P
-			switch dir {
-			case share.MoveUp:
-				p.Y -= 1
-			case share.MoveDown:
-				p.Y += 1
-			case share.MoveLeft:
-				p.X -= 1
-			case share.MoveRight:
-				p.X += 1
-			}
-			// s and a is the same object. put s is equivlent.
-			a.PutToPoint(p)
-			sprites = append(sprites, a)
-
-		} else {
-			sprites = append(sprites, s)
-
-		}
-	}
-
-	l.sprites = sprites
-}
-
-func (l *Land) getAlice() (share.Human, error) {
-	l.spritesLock.Lock()
-	defer l.spritesLock.Unlock()
-
-	for _, s := range l.sprites {
-		if isAlice(s) {
-			h, _ := s.(share.Human)
-			return h, nil
-		}
-	}
-	return share.Human{}, errors.New("can not find alice")
-}
-
-func (l *Land) getGhost() (share.Human, error) {
-	l.spritesLock.Lock()
-	defer l.spritesLock.Unlock()
-
-	for _, s := range l.sprites {
-		if isGhost(s) {
-			h, _ := s.(share.Human)
-			return h, nil
-		}
-	}
-	return share.Human{}, errors.New("can not find ghost")
-}
-
-func isAlice(sprite share.Sprite) bool {
-	h, ok := sprite.(share.Human)
-	return ok && h.Name == "Alice"
-}
-
-func isGhost(sprite share.Sprite) bool {
-	h, ok := sprite.(share.Human)
-	return ok && h.Name == "Ghost"
-}
-
-func (l *Land) findEmptyPoint() share.Point {
-	return share.Point{X: rand.Int() % gCol, Y: rand.Int() % gRow}
 }
 
 func (l *Land) Shrink() {
@@ -205,21 +102,21 @@ func (l *Land) Plant(params *PlantParams) (*PlantResult, error) {
 
 	var s share.Sprite
 	for i := 0; i < params.Number; i++ {
-		point := l.findEmptyPoint()
+		point := l.randPoint()
 		switch params.What {
 		case share.PlantTree:
 			o := share.Tree{}
-			o.PutToPoint(point)
+			o.PutPoint(point)
 			s = o
 
 		case share.PlantFlower:
 			o := share.Flower{}
-			o.PutToPoint(point)
+			o.PutPoint(point)
 			s = o
 
 		case share.PlantGrass:
 			o := share.Grass{}
-			o.PutToPoint(point)
+			o.PutPoint(point)
 			s = o
 		}
 
@@ -281,44 +178,52 @@ func (l *Land) sendResultItem(resultCh chan InfoResultItem) {
 }
 
 // random spawn some events
-func (l *Land) spawnEvents() {
+func (l *Land) spawnFakeEvents() {
 	tick := time.Tick(200 * time.Millisecond)
 
 	loop := 0
-	l.jumpGhost()
 
 	for _ = range tick {
 		loop++
+		// every 25 loops, rabbit jump once.
 		if loop%25 == 0 {
-			l.jumpGhost()
+			newPoint := l.rabbitJump()
+			l.sendEvent(
+				share.EventTypeJump,
+				share.SpriteJump{Name: "Rabbit", X: newPoint.X, Y: newPoint.Y})
+
 		}
 
+		// for now, only spwan 0 type event: EventTypeMove
 		choice := rand.Int() % 1
 
+		// type of event
 		var t string
+		// the item associated with the event
 		var i interface{}
+
 		switch choice {
 		case 0:
 			t = share.EventTypeMove
 
-			a, err := l.getAlice()
-			log.Debug(fmt.Sprintf("l.getAlice: %v", a))
+			a, err := l.aliceInfo()
+			log.Debug(fmt.Sprintf("l.aliceInfo: %v", a))
 			if err != nil {
 				continue
 			}
 
-			g, err := l.getGhost()
-			log.Debug(fmt.Sprintf("l.getGhost: %v", g))
+			r, err := l.rabbitInfo()
+			log.Debug(fmt.Sprintf("l.rabbitInfo: %v", r))
 			if err != nil {
 				continue
 			}
 
-			dir, err := computeAliceMove(a.P.X, a.P.Y, g.P.X, g.P.Y)
+			dir, err := moveDirection(a.P.X, a.P.Y, r.P.X, r.P.Y)
 			if err != nil {
 				continue
 			}
 
-			l.moveAlice(dir)
+			l.aliceMove(dir)
 
 			i = share.SpriteMove{Name: "Alice", Direction: dir}
 
@@ -329,73 +234,15 @@ func (l *Land) spawnEvents() {
 			t = share.EventTypeDelete
 			i = share.SpriteDelete{}
 		}
-		event := Event{Type: t, Item: i}
 
-		// send to channel, the other end is alice eventLoop waiting.
-		if l.config.EventCh != nil {
-			l.config.EventCh <- event
-		}
+		l.sendEvent(t, i)
 	}
-
 }
 
-func (l *Land) jumpGhost() {
-	log.Debug(fmt.Sprintf("jumpGhost"))
-
-	var sprites []share.Sprite
-
-	l.spritesLock.Lock()
-	defer l.spritesLock.Unlock()
-
-	point := l.findEmptyPoint()
-	ghost := share.Human{Name: "Ghost"}
-
-	for _, s := range l.sprites {
-		if isGhost(s) {
-			point.X = rand.Int() % gCol
-			point.Y = rand.Int() % gRow
-
-		} else {
-			sprites = append(sprites, s)
-
-		}
-	}
-
-	// send event
+func (l *Land) sendEvent(eventType string, eventItem interface{}) {
+	event := Event{Type: eventType, Item: eventItem}
+	// send to channel, on the other end, alice eventLoop is waiting.
 	if l.config.EventCh != nil {
-		t := share.EventTypeJump
-		i := share.SpriteJump{Name: "Ghost", X: point.X, Y: point.Y}
-
-		event := Event{Type: t, Item: i}
 		l.config.EventCh <- event
 	}
-
-	ghost.PutToPoint(point)
-	sprites = append(sprites, ghost)
-
-	l.sprites = sprites
-}
-
-func computeAliceMove(srcX, srcY, dstX, dstY int) (dir share.MoveDirection, err error) {
-
-	var dirs []share.MoveDirection
-	if srcX > dstX {
-		dirs = append(dirs, share.MoveLeft)
-	} else if srcX < dstX {
-		dirs = append(dirs, share.MoveRight)
-	}
-
-	if srcY > dstY {
-		dirs = append(dirs, share.MoveUp)
-	} else if srcY < dstY {
-		dirs = append(dirs, share.MoveDown)
-	}
-
-	if len(dirs) == 0 {
-		err = errors.New("no need to move")
-	} else {
-		dir = dirs[rand.Int()%len(dirs)]
-	}
-
-	return dir, err
 }
