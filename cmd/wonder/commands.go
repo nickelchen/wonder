@@ -7,7 +7,8 @@ import (
 	"github.com/mitchellh/cli"
 
 	"github.com/nickelchen/wonder/cmd/wonder/command"
-	"github.com/nickelchen/wonder/cmd/wonder/command/alice"
+	"github.com/nickelchen/wonder/cmd/wonder/command/server"
+	"github.com/nickelchen/wonder/cmd/wonder/command/stage"
 )
 
 var Commands map[string]cli.CommandFactory
@@ -16,8 +17,13 @@ func init() {
 	ui := &cli.BasicUi{Writer: os.Stdout}
 
 	Commands = map[string]cli.CommandFactory{
-		"alice": func() (cli.Command, error) {
-			return &alice.Command{
+		"stage": func() (cli.Command, error) {
+			return &stage.Command{
+				Ui: ui,
+			}, nil
+		},
+		"server": func() (cli.Command, error) {
+			return &server.Command{
 				Ui: ui,
 			}, nil
 		},

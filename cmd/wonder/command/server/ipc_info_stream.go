@@ -1,4 +1,4 @@
-package alice
+package server
 
 import (
 	"encoding/json"

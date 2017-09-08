@@ -1,4 +1,4 @@
-package alice
+package stage
 
 import (
 	"flag"
@@ -24,7 +24,7 @@ type Config struct {
 }
 
 func (c *Command) readConfig(args []string) *Config {
-	cmdFlags := flag.NewFlagSet("alice", flag.ContinueOnError)
+	cmdFlags := flag.NewFlagSet("stage", flag.ContinueOnError)
 
 	var rpcAddr string
 	var nodeName string
@@ -52,13 +52,13 @@ func (c *Command) readConfig(args []string) *Config {
 	return &config
 }
 
-func (c *Command) createAlice(config *Config) *Alice {
-	alice := Create(config)
-	return alice
+func (c *Command) createStage(config *Config) *Stage {
+	stage := Create(config)
+	return stage
 }
 
-func (c *Command) startAlice(config *Config, alice *Alice) *AliceIPC {
-	alice.Enter()
+func (c *Command) startStage(config *Config, stage *Stage) *StageIPC {
+	stage.Enter()
 
 	ipcListener, err := net.Listen("tcp", config.RPCAddr)
 	if err != nil {
@@ -66,51 +66,40 @@ func (c *Command) startAlice(config *Config, alice *Alice) *AliceIPC {
 		return nil
 	}
 
-	ipc := NewAliceIPC(alice, ipcListener)
+	ipc := NewStageIPC(stage, ipcListener)
 	return ipc
 }
 
 func (c *Command) Run(args []string) int {
-	log.Info("Alice is running.")
+	log.Info("Stage is running.")
 	config := c.readConfig(args)
 
-	alice := c.createAlice(config)
-	if alice == nil {
-		log.Error("can not create alice.")
+	stage := c.createStage(config)
+	if stage == nil {
+		log.Error("can not create stage.")
 		return 1
 	}
-	defer alice.Leave()
+	defer stage.Leave()
 
-	ipc := c.startAlice(config, alice)
+	ipc := c.startStage(config, stage)
 	if ipc == nil {
-		log.Error("can not start alice.")
+		log.Error("can not start stage.")
 		return 1
 	}
 	defer ipc.Shutdown()
 
-	go c.playing(alice)
-
-	return c.exitSignals(alice)
+	return c.exitSignals(stage)
 }
 
-func (c *Command) playing(alice *Alice) {
-	for {
-		pong := alice.Ping()
-		c.Ui.Output(pong)
-
-		time.Sleep(10 * time.Second)
-	}
-}
-
-func (c *Command) exitSignals(alice *Alice) int {
+func (c *Command) exitSignals(stage *Stage) int {
 	signalCh := make(chan os.Signal, 4)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	var sig os.Signal
 	select {
 	case s := <-signalCh:
 		sig = s
-	case <-alice.ShutdownCh():
-		log.Info("alice shutdown himself.")
+	case <-stage.ShutdownCh():
+		log.Info("stage shutdown himself.")
 		return 0
 	}
 
@@ -127,7 +116,7 @@ func (c *Command) exitSignals(alice *Alice) int {
 	gracefulTimeout := 3 * time.Second
 
 	go func() {
-		if err := alice.Leave(); err != nil {
+		if err := stage.Leave(); err != nil {
 			return
 		}
 		// gracefulCh <- struct{}{}
@@ -145,9 +134,9 @@ func (c *Command) exitSignals(alice *Alice) int {
 }
 
 func (c *Command) Help() string {
-	return "alice command"
+	return "stage command"
 }
 
 func (c *Command) Synopsis() string {
-	return "alice command"
+	return "stage command"
 }

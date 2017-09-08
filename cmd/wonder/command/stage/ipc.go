@@ -1,13 +1,13 @@
-package alice
+package stage
 
 import (
 	"bufio"
 	"fmt"
 	"io"
 	"net"
-	"github.com/nickelchen/wonder/land"
-	"github.com/nickelchen/wonder/share"
 	"strings"
+
+	"github.com/nickelchen/wonder/share"
 
 	log "github.com/sirupsen/logrus"
 
@@ -28,7 +28,7 @@ type IPCClient struct {
 func (c *IPCClient) send(header *share.ResponseHeader, obj interface{}) error {
 	if err := c.enc.Encode(header); err != nil {
 		log.Error(fmt.Sprintf("Error in encode header: %s", err))
-		log.Error(getStack())
+		log.Error(trace())
 		return err
 	}
 
@@ -48,16 +48,16 @@ func (c *IPCClient) send(header *share.ResponseHeader, obj interface{}) error {
 	return nil
 }
 
-type AliceIPC struct {
-	alice    *Alice
+type StageIPC struct {
+	stage    *Stage
 	listener net.Listener
 	clients  map[string]*IPCClient
 	stop     bool
 }
 
-func NewAliceIPC(alice *Alice, listener net.Listener) *AliceIPC {
-	ipc := &AliceIPC{
-		alice:    alice,
+func NewStageIPC(stage *Stage, listener net.Listener) *StageIPC {
+	ipc := &StageIPC{
+		stage:    stage,
 		listener: listener,
 		clients:  make(map[string]*IPCClient),
 	}
@@ -67,7 +67,7 @@ func NewAliceIPC(alice *Alice, listener net.Listener) *AliceIPC {
 	return ipc
 }
 
-func (i *AliceIPC) Shutdown() {
+func (i *StageIPC) Shutdown() {
 	if i.stop {
 		return
 	}
@@ -79,7 +79,7 @@ func (i *AliceIPC) Shutdown() {
 	}
 }
 
-func (i *AliceIPC) listen() {
+func (i *StageIPC) listen() {
 	for {
 		conn, err := i.listener.Accept()
 		if err != nil {
@@ -104,7 +104,7 @@ func (i *AliceIPC) listen() {
 }
 
 // read client request header, dispatch command, send response to client.
-func (i *AliceIPC) handleClient(client *IPCClient) {
+func (i *StageIPC) handleClient(client *IPCClient) {
 	log.Debug(fmt.Sprintf("Get client. %v", client))
 
 	var reqHeader share.RequestHeader
@@ -113,7 +113,7 @@ func (i *AliceIPC) handleClient(client *IPCClient) {
 		if err != nil {
 			if err != io.EOF && !strings.Contains(err.Error(), "wsarecv") {
 				log.Error(fmt.Sprintf("can not decode requstHeader: %s", err))
-				log.Error(getStack())
+				log.Error(trace())
 			}
 			return
 		}
@@ -124,12 +124,8 @@ func (i *AliceIPC) handleClient(client *IPCClient) {
 		log.Debug(fmt.Sprintf("reqHeader.Command: %v", command))
 
 		switch command {
-		case share.PlantCommand:
-			respHeader, respBody = i.handlePlant(client, reqHeader.Seq)
-		case share.InfoCommand:
-			respHeader, respBody = i.handleInfo(client, reqHeader.Seq)
-		case share.SubscribeCommand:
-			respHeader, respBody = i.handleSubscribe(client, reqHeader.Seq)
+		case share.ListServersCommand:
+			respHeader, respBody = i.handleListServers(client, reqHeader.Seq)
 		}
 
 		log.Debug(fmt.Sprintf("respHeader is :%v", respHeader))
@@ -141,81 +137,25 @@ func (i *AliceIPC) handleClient(client *IPCClient) {
 	}
 }
 
-func (i *AliceIPC) handlePlant(client *IPCClient, seq uint64) (*share.ResponseHeader, *share.PlantResponse) {
-	var req share.PlantRequest
+func (i *StageIPC) handleListServers(client *IPCClient, seq uint64) (
+	*share.ResponseHeader, *share.ListServersResponse) {
+
+	var req share.ListServersRequest
 	if err := client.dec.Decode(&req); err != nil {
 		return nil, nil
 	}
 
-	plantParams := land.PlantParams{
-		What:   req.What,
-		Color:  req.Color,
-		Number: req.Number,
-	}
-
-	plantResult, err := i.alice.Plant(&plantParams)
-
+	servers, err := i.stage.ListServers()
 	respHeader := share.ResponseHeader{
 		Seq:   seq,
 		Error: errorToString(err),
 	}
 
-	respBody := share.PlantResponse{
-		Succ: plantResult.Succ,
-		Fail: plantResult.Fail,
+	respBody := share.ListServersResponse{
+		servers: servers,
 	}
 
 	return &respHeader, &respBody
-}
-
-func (i *AliceIPC) handleInfo(client *IPCClient, seq uint64) (*share.ResponseHeader, *share.InfoResponse) {
-	log.Debug(fmt.Sprintf("handleInfo start"))
-	var req share.InfoRequest
-	if err := client.dec.Decode(&req); err != nil {
-		log.Error("can not decode infoRequest")
-		return nil, nil
-	}
-
-	infoParams := land.InfoParams{}
-
-	infoResult, err := i.alice.Info(&infoParams)
-
-	if err == nil {
-		infoRespStream := newInfoResponseStream(client, seq)
-		go infoRespStream.stream(infoResult)
-	}
-
-	respHeader := share.ResponseHeader{
-		Seq:   seq,
-		Error: errorToString(err),
-	}
-
-	return &respHeader, nil
-}
-
-func (i *AliceIPC) handleSubscribe(client *IPCClient, seq uint64) (*share.ResponseHeader, *share.SubscribeResponse) {
-	var req share.SubscribeRequest
-	if err := client.dec.Decode(&req); err != nil {
-		log.Error("can not decode subscribeRequest")
-		return nil, nil
-	}
-
-	respHeader := share.ResponseHeader{
-		Seq:   seq,
-		Error: "",
-	}
-	if _, ok := client.eventResponseStreams[seq]; ok {
-		respHeader.Error = "stream with seq already exists"
-	}
-
-	s := newEventResponseStream(client, seq)
-	client.eventResponseStreams[seq] = s
-
-	// prevent race condition. make sure send this response first, then we can stream events.
-	// TODO
-	defer i.alice.Subscribe(s)
-
-	return &respHeader, nil
 }
 
 func errorToString(err error) string {

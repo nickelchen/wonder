@@ -39,6 +39,26 @@ func (h *plantHandler) Handle(respHeader *share.ResponseHeader) {
 func (h *plantHandler) Cleanup() {
 }
 
+type aliveHandler struct {
+	client *RPCClient
+	seq    uint64
+	respCh chan<- bool
+}
+
+func (h *aliveHandler) Handle(respHeader *share.ResponseHeader) {
+	//
+	var resp share.AliveResponse
+	if err := h.client.dec.Decode(&resp); err != nil {
+		fmt.Printf("can not decode aliveResponse, %s", err)
+		return
+	}
+	select {
+	case h.respCh <- true:
+	default:
+		log.Error("aliveHandler Dropping response, respCh full.")
+	}
+}
+
 type infoHandler struct {
 	client *RPCClient
 	seq    uint64

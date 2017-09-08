@@ -32,6 +32,13 @@ type PlantResponse struct {
 	Fail int
 }
 
+type ListServersRequest struct {
+}
+
+type ListServersResponse struct {
+	Servers []string
+}
+
 //
 // Info command
 //

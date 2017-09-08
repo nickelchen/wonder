@@ -1,4 +1,4 @@
-package alice
+package server
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type EventHandler interface {
 	Handle(event land.Event)
 }
 
-type Alice struct {
+type Server struct {
 	name             string
 	land             *land.Land
 	config           *Config
@@ -21,9 +21,11 @@ type Alice struct {
 	eventCh          chan land.Event
 	eventHandlers    map[EventHandler]struct{}
 	eventHandlerList []EventHandler
+
+	stageRPC *client.RPCClient
 }
 
-func Create(config *Config) *Alice {
+func Create(config *Config) *Server {
 	shutdownCh := make(chan struct{})
 	eventCh := make(chan land.Event, 512)
 
@@ -32,7 +34,7 @@ func Create(config *Config) *Alice {
 
 	l := land.Create(landConfig)
 
-	alice := Alice{
+	server := Server{
 		name:          config.Name,
 		land:          l,
 		config:        config,
@@ -41,11 +43,11 @@ func Create(config *Config) *Alice {
 		eventCh:       eventCh,
 		eventHandlers: make(map[EventHandler]struct{}),
 	}
-	return &alice
+	return &server
 }
 
-func (a *Alice) Enter() {
-	log.Info("In command/alice/alice.go Enter()")
+func (a *Server) Enter() {
+	log.Info("In command/server/server.go Enter()")
 	a.land.Spread()
 
 	go a.eventLoop()
@@ -53,8 +55,8 @@ func (a *Alice) Enter() {
 	// go a.autoShutdown(10 * time.Second)
 }
 
-func (a *Alice) Leave() error {
-	log.Info("In command/alice/alice.go Leave()")
+func (a *Server) Leave() error {
+	log.Info("In command/server/server.go Leave()")
 	a.land.Shrink()
 
 	// simulate leaving process
@@ -62,11 +64,11 @@ func (a *Alice) Leave() error {
 	return nil
 }
 
-func (a *Alice) ShutdownCh() <-chan struct{} {
+func (a *Server) ShutdownCh() <-chan struct{} {
 	return a.shutdownCh
 }
 
-func (a *Alice) autoShutdown(d time.Duration) {
+func (a *Server) autoShutdown(d time.Duration) {
 	select {
 	case <-time.After(d):
 		a.Leave()
@@ -74,22 +76,22 @@ func (a *Alice) autoShutdown(d time.Duration) {
 	}
 }
 
-func (a *Alice) Ping() string {
+func (a *Server) Ping() string {
 	log.Info("=>")
 	return "<="
 }
 
-func (a *Alice) Plant(params *land.PlantParams) (*land.PlantResult, error) {
+func (a *Server) Plant(params *land.PlantParams) (*land.PlantResult, error) {
 	result, err := a.land.Plant(params)
 	return result, err
 }
 
-func (a *Alice) Info(params *land.InfoParams) (*land.InfoResult, error) {
+func (a *Server) Info(params *land.InfoParams) (*land.InfoResult, error) {
 	result, err := a.land.Info(params)
 	return result, err
 }
 
-func (a *Alice) Subscribe(eh EventHandler) {
+func (a *Server) Subscribe(eh EventHandler) {
 	a.eventHandlers[eh] = struct{}{}
 	a.eventHandlerList = nil
 	for eh := range a.eventHandlers {
@@ -99,12 +101,12 @@ func (a *Alice) Subscribe(eh EventHandler) {
 	return
 }
 
-func (a *Alice) eventLoop() {
+func (a *Server) eventLoop() {
 	for {
 		select {
 		case event := <-a.eventCh:
 			// get Event from land, fan out
-			log.Debug(fmt.Sprintf("in alice eventLoop, get event :%v", event))
+			log.Debug(fmt.Sprintf("in server eventLoop, get event :%v", event))
 
 			for _, eh := range a.eventHandlerList {
 				eh.Handle(event)

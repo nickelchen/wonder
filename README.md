@@ -14,7 +14,7 @@ $ go get -u github.com/nickelchen/wonder
 When Alice start running, the wonder land spread out, there are no plants or animals there.
 
 ```
-$ wonder alice
+$ wonder stage
 ```
 
 Then you can plant some trees, flowers or grass to the land.
