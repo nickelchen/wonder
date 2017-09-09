@@ -2,8 +2,10 @@ package server
 
 import (
 	"fmt"
-	"github.com/nickelchen/wonder/land"
 	"time"
+
+	"github.com/nickelchen/wonder/client"
+	"github.com/nickelchen/wonder/land"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -22,7 +24,8 @@ type Server struct {
 	eventHandlers    map[EventHandler]struct{}
 	eventHandlerList []EventHandler
 
-	stageRPC *client.RPCClient
+	stageClient *client.RPCClient
+	reportTimes int
 }
 
 func Create(config *Config) *Server {
@@ -35,7 +38,6 @@ func Create(config *Config) *Server {
 	l := land.Create(landConfig)
 
 	server := Server{
-		name:          config.Name,
 		land:          l,
 		config:        config,
 		landConfig:    landConfig,
@@ -99,6 +101,28 @@ func (a *Server) Subscribe(eh EventHandler) {
 	}
 
 	return
+}
+
+func (a *Server) ConnectStage() bool {
+	stageConfig := client.Config{
+		Addr:    a.config.StageAddr,
+		Timeout: a.config.StageTimeout,
+	}
+
+	stageClient, err := client.ClientFromConfig(&stageConfig)
+	a.stageClient = stageClient
+
+	return err == nil
+}
+
+func (a *Server) ReportStage() {
+	respCh := make(chan string)
+	log.Debug("Report To Stage, times: ", a.reportTimes)
+
+	a.stageClient.ServerAlive(a.config.ServerAddr, respCh)
+	<-respCh
+
+	a.reportTimes++
 }
 
 func (a *Server) eventLoop() {

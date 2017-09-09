@@ -15,13 +15,12 @@ import (
 )
 
 type IPCClient struct {
-	from                 string
-	conn                 net.Conn
-	reader               *bufio.Reader
-	writer               *bufio.Writer
-	dec                  *codec.Decoder
-	enc                  *codec.Encoder
-	eventResponseStreams map[uint64]*eventResponseStream
+	from   string
+	conn   net.Conn
+	reader *bufio.Reader
+	writer *bufio.Writer
+	dec    *codec.Decoder
+	enc    *codec.Encoder
 }
 
 // send share.ResponseHeader and responseBody to client.
@@ -86,11 +85,10 @@ func (i *StageIPC) listen() {
 			return
 		}
 		client := &IPCClient{
-			from:                 conn.RemoteAddr().String(),
-			conn:                 conn,
-			reader:               bufio.NewReader(conn),
-			writer:               bufio.NewWriter(conn),
-			eventResponseStreams: make(map[uint64]*eventResponseStream),
+			from:   conn.RemoteAddr().String(),
+			conn:   conn,
+			reader: bufio.NewReader(conn),
+			writer: bufio.NewWriter(conn),
 		}
 		client.dec = codec.NewDecoder(client.reader,
 			&codec.MsgpackHandle{RawToString: true, WriteExt: true})
@@ -111,9 +109,13 @@ func (i *StageIPC) handleClient(client *IPCClient) {
 	for {
 		err := client.dec.Decode(&reqHeader)
 		if err != nil {
-			if err != io.EOF && !strings.Contains(err.Error(), "wsarecv") {
+			if err != io.EOF &&
+				!strings.Contains(err.Error(), "wsarecv") &&
+				!strings.Contains(err.Error(), "closed") {
+
 				log.Error(fmt.Sprintf("can not decode requstHeader: %s", err))
 				log.Error(trace())
+
 			}
 			return
 		}
@@ -126,6 +128,8 @@ func (i *StageIPC) handleClient(client *IPCClient) {
 		switch command {
 		case share.ListServersCommand:
 			respHeader, respBody = i.handleListServers(client, reqHeader.Seq)
+		case share.ServerAliveCommand:
+			respHeader, respBody = i.handleServerAlive(client, reqHeader.Seq)
 		}
 
 		log.Debug(fmt.Sprintf("respHeader is :%v", respHeader))
@@ -137,9 +141,7 @@ func (i *StageIPC) handleClient(client *IPCClient) {
 	}
 }
 
-func (i *StageIPC) handleListServers(client *IPCClient, seq uint64) (
-	*share.ResponseHeader, *share.ListServersResponse) {
-
+func (i *StageIPC) handleListServers(client *IPCClient, seq uint64) (*share.ResponseHeader, *share.ListServersResponse) {
 	var req share.ListServersRequest
 	if err := client.dec.Decode(&req); err != nil {
 		return nil, nil
@@ -152,7 +154,27 @@ func (i *StageIPC) handleListServers(client *IPCClient, seq uint64) (
 	}
 
 	respBody := share.ListServersResponse{
-		servers: servers,
+		Servers: servers,
+	}
+
+	return &respHeader, &respBody
+}
+
+func (i *StageIPC) handleServerAlive(client *IPCClient, seq uint64) (*share.ResponseHeader, *share.ServerAliveResponse) {
+	var req share.ServerAliveRequest
+	if err := client.dec.Decode(&req); err != nil {
+		return nil, nil
+	}
+
+	msg, err := i.stage.ServerAlive(req.ServerAddr)
+
+	respHeader := share.ResponseHeader{
+		Seq:   seq,
+		Error: errorToString(err),
+	}
+
+	respBody := share.ServerAliveResponse{
+		Message: msg,
 	}
 
 	return &respHeader, &respBody

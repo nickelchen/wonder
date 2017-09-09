@@ -32,13 +32,6 @@ type PlantResponse struct {
 	Fail int
 }
 
-type ListServersRequest struct {
-}
-
-type ListServersResponse struct {
-	Servers []string
-}
-
 //
 // Info command
 //
@@ -64,7 +57,7 @@ type InfoResponseObj struct {
 }
 
 //
-// Subscribe command
+// Subscribe Event command
 //
 type SubscribeRequest struct {
 }
@@ -84,10 +77,34 @@ type EventResponseObj struct {
 }
 
 //
-// command list
+// List Servers command
+//
+type ListServersRequest struct {
+}
+
+type ListServersResponse struct {
+	Servers []string
+}
+
+//
+// Report Server Alive command
+//
+
+type ServerAliveRequest struct {
+	ServerAddr string
+}
+
+type ServerAliveResponse struct {
+	Message string
+}
+
+//
+// all available command list
 //
 const (
-	PlantCommand     = "PlantCommand"
-	InfoCommand      = "InfoCommand"
-	SubscribeCommand = "SubscribeCommand"
+	PlantCommand       = "PlantCommand"
+	InfoCommand        = "InfoCommand"
+	SubscribeCommand   = "SubscribeCommand"
+	ListServersCommand = "ListServersCommand"
+	ServerAliveCommand = "ServerAliveCommand"
 )

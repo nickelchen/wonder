@@ -18,22 +18,34 @@ type Command struct {
 	Ui cli.Ui
 }
 
+var DefaultStageTimeout = 10 * time.Second
+var DefaultReportInterval = 2 * time.Second
+
 type Config struct {
 	bindIP     string
 	ServerAddr string
-	StageAddr  string
+
+	StageAddr      string
+	StageTimeout   time.Duration
+	ReportInterval time.Duration
 }
 
 func (c *Command) readConfig(args []string) *Config {
 	cmdFlags := flag.NewFlagSet("server", flag.ContinueOnError)
 
 	var stageAddr string
+	var stageTimeout int
+	var reportInterval int
+
 	var bindIP string
 	var debug bool
 
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }
 	cmdFlags.StringVar(&stageAddr, "stage-addr", "127.0.0.1:9898", "which stage doest the server to report")
-	cmdFlags.StringVar(&bindIP, "bind-ip", "127.0.0.1")
+	cmdFlags.IntVar(&stageTimeout, "stage-timeout", 0, "timeout when connect to stage")
+	cmdFlags.IntVar(&reportInterval, "stage-report-interval", 0, "time interval to report to stage")
+
+	cmdFlags.StringVar(&bindIP, "bind-ip", "127.0.0.1", "this server bind ip address")
 
 	cmdFlags.BoolVar(&debug, "debug", true, "debug mode")
 
@@ -48,8 +60,10 @@ func (c *Command) readConfig(args []string) *Config {
 	}
 
 	config := Config{
-		bindIP:    bindIP,
-		StageAddr: stageAddr,
+		bindIP:         bindIP,
+		StageAddr:      stageAddr,
+		StageTimeout:   time.Duration(stageTimeout) * time.Second,
+		ReportInterval: time.Duration(reportInterval) * time.Second,
 	}
 
 	return &config
@@ -64,8 +78,8 @@ func (c *Command) startServer(config *Config, server *Server) *ServerIPC {
 	server.Enter()
 
 	// let the os to determine which port to listen
-	tcpAddr := &net.TCPAddr{IP: config.bindIP, Port: 0}
-	ipcLn, err := net.Listen("tcp", tcpAddr)
+	tcpAddr := &net.TCPAddr{IP: net.ParseIP(config.bindIP), Port: 0}
+	ipcLn, err := net.ListenTCP("tcp", tcpAddr)
 
 	if err != nil {
 		log.Error(fmt.Sprintf("can not listen. %s", err.Error()))
@@ -117,11 +131,26 @@ func (c *Command) pingLoop(server *Server) {
 	}
 }
 
-func (c *Command) connectStage(config *Config, server *Server) {
+func (c *Command) connectStage(config *Config, server *Server) bool {
+	if config.StageTimeout == 0 {
+		config.StageTimeout = DefaultStageTimeout
+	}
+	log.Debug("config.StageTimeout: ", config.StageTimeout)
 
+	return server.ConnectStage()
 }
-func (c *Command) reportStage(config *Config, server *Server) {
 
+func (c *Command) reportStage(config *Config, server *Server) {
+	if config.ReportInterval == 0 {
+		config.ReportInterval = DefaultReportInterval
+	}
+
+	for {
+		select {
+		case <-time.After(config.ReportInterval):
+			server.ReportStage()
+		}
+	}
 }
 
 func (c *Command) exitSignals(server *Server) int {

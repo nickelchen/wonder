@@ -111,9 +111,13 @@ func (i *ServerIPC) handleClient(client *IPCClient) {
 	for {
 		err := client.dec.Decode(&reqHeader)
 		if err != nil {
-			if err != io.EOF && !strings.Contains(err.Error(), "wsarecv") {
+			if err != io.EOF &&
+				!strings.Contains(err.Error(), "wsarecv") &&
+				!strings.Contains(err.Error(), "closed") {
+
 				log.Error(fmt.Sprintf("can not decode requstHeader: %s", err))
 				log.Error(trace())
+
 			}
 			return
 		}

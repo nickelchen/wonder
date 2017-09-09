@@ -39,26 +39,6 @@ func (h *plantHandler) Handle(respHeader *share.ResponseHeader) {
 func (h *plantHandler) Cleanup() {
 }
 
-type aliveHandler struct {
-	client *RPCClient
-	seq    uint64
-	respCh chan<- bool
-}
-
-func (h *aliveHandler) Handle(respHeader *share.ResponseHeader) {
-	//
-	var resp share.AliveResponse
-	if err := h.client.dec.Decode(&resp); err != nil {
-		fmt.Printf("can not decode aliveResponse, %s", err)
-		return
-	}
-	select {
-	case h.respCh <- true:
-	default:
-		log.Error("aliveHandler Dropping response, respCh full.")
-	}
-}
-
 type infoHandler struct {
 	client *RPCClient
 	seq    uint64
@@ -125,4 +105,56 @@ func (h *eventHandler) Handle(respHeader *share.ResponseHeader) {
 }
 
 func (h *eventHandler) Cleanup() {
+}
+
+type serverAliveHandler struct {
+	client *RPCClient
+	seq    uint64
+	respCh chan<- string
+}
+
+func (h *serverAliveHandler) Handle(respHeader *share.ResponseHeader) {
+	var resp share.ServerAliveResponse
+	if err := h.client.dec.Decode(&resp); err != nil {
+		fmt.Printf("Error in decode resp string: %s\n", err)
+		return
+	}
+	ret := resp.Message
+	log.Printf("Get resp message: %s\n", ret)
+
+	// write to respCh
+	select {
+	case h.respCh <- ret:
+	default:
+		log.Info("serverAliveHandler Dropping response, respCh full.")
+	}
+}
+
+func (h *serverAliveHandler) Cleanup() {
+}
+
+type listServersHandler struct {
+	client *RPCClient
+	seq    uint64
+	respCh chan<- []string
+}
+
+func (h *listServersHandler) Handle(respHeader *share.ResponseHeader) {
+	var resp share.ListServersResponse
+	if err := h.client.dec.Decode(&resp); err != nil {
+		fmt.Printf("Error in decode resp string: %s\n", err)
+		return
+	}
+	ret := resp.Servers
+	log.Printf("Get resp message: %s\n", ret)
+
+	// write to respCh
+	select {
+	case h.respCh <- ret:
+	default:
+		log.Info("listServersHandler Dropping response, respCh full.")
+	}
+}
+
+func (h *listServersHandler) Cleanup() {
 }

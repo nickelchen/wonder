@@ -32,6 +32,13 @@ func init() {
 				Ui: ui,
 			}, nil
 		},
+
+		"list": func() (cli.Command, error) {
+			return &command.ListCommand{
+				Ui: ui,
+			}, nil
+		},
+
 		"info": func() (cli.Command, error) {
 			fh, _ := os.OpenFile("./logs/info.log",
 				os.O_RDWR|os.O_APPEND|os.O_CREATE, os.FileMode(0755))
